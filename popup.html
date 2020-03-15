@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<link rel="stylesheet" href="popup.css"/>
+	</head>
+	<body>
+		<h1>NNM</h1>
+		<h2>No N-word Macedonia</h2>
+		<h3>N-words found</h3>
+		<div class="row-container">
+			<span>Total:</span>
+			<span id="total_n_words" class="counter"></span>
+		</div>
+		<div class="row-container">
+			<span>This page:</span>
+			<span id="page_n_words" class="counter"></span>
+		</div>
+		<h3>Redaction status</h3>
+		<div class="row-container">
+			<span id="txt_enabled">Enabled:</span>
+			<label class="switch">
+				<input type="checkbox" id="chbox_addon_enabled">
+				<span class="slider"></span>
+			</label>
+		</div>
+		<div class="row-container">
+			<span id="txt-exception">This site:</span>
+			<label class="switch">
+				<input type="checkbox" id="chbox_site_enabled">
+				<span class="slider"></span>
+			</label>
+		</div>
+		<h3>Redaction style</h3>
+		<label class="radio-label">
+			<input type="radio" name="radio" value="redacted-word-strike"> Struckthrough</label>
+		<label class="radio-label">
+			<input type="radio" name="radio" value="redacted-word-border"> Bordered</label>
+		<label class="radio-label">
+			<input type="radio" name="radio" value="redacted-word-black"> Blackened</label>
+		<label class="radio-label">
+			<input type="radio" name="radio" value="redacted-word-hidden"> 	Hidden</label>
+		<div id="txt_refresh">
+			Refresh page for changes to take effect.
+		</div>
+		<script src="popup.js"></script>
+	</body>
+</html>

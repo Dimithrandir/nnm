@@ -1,0 +1,15 @@
+.redacted-word-border {
+	border: 3px solid red !important;
+}
+
+.redacted-word-strike {
+	text-decoration: line-through double red !important;
+}
+
+.redacted-word-black {
+	background-color: currentColor !important;
+}
+
+.redacted-word-hidden {
+	display: none !important;
+}
