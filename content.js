@@ -304,7 +304,7 @@ function startRedacting(settings) {
 }
 
 // get setting from background script
-let gettingStorage = browser.runtime.sendMessage({action: "get_settings"}); // .storage.local.get(["addonEnabled", "exceptions"]);
+let gettingStorage = browser.runtime.sendMessage({action: "get_settings"});
 gettingStorage.then(startRedacting);
 
 // wait for a message

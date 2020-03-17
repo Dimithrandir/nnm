@@ -21,6 +21,16 @@ function onError(e) {
 }
 
 /*
+Extract site name from given url
+*/
+function getSiteName(url) {
+	let regEx = new RegExp("[a-z]+:\/\/[a-z0-9\.]+\/", "gi");
+	let matches = [...url.matchAll(regEx)];
+	let siteName = (matches.length) ? matches[0][0] : url;
+	return siteName;
+}
+
+/*
 Check if anything is stored on startup, insert default values if not.
 */
 function getStorage(storedValues) {
@@ -48,11 +58,11 @@ function listenForMessages(message, sender, sendResponse) {
 		case "get_settings":
 			// if message was sent from a content script
 			if (sender.envType === "content_child") {
-				sendResponse({addonEnabled: addonEnabled, exception: exceptions.includes(sender.tab.url), redactClassName: redactClassName});
+				sendResponse({addonEnabled: addonEnabled, exception: exceptions.includes(getSiteName(sender.tab.url)), redactClassName: redactClassName});
 			}
 			// message was sent from a popup
 			else {
-				sendResponse({addonEnabled: addonEnabled, nWordCount: nWordCount, currentCount: currentCount[message.data.id], exception: exceptions.includes(message.data.url), redactClassName: redactClassName});
+				sendResponse({addonEnabled: addonEnabled, nWordCount: nWordCount, currentCount: currentCount[message.data.id], exception: exceptions.includes(getSiteName(message.data.url)), redactClassName: redactClassName});
 			}
 			break;
 		case "set_addon_enabled":
@@ -60,15 +70,17 @@ function listenForMessages(message, sender, sendResponse) {
 			browser.storage.local.set({addonEnabled: addonEnabled});
 			break;
 		case "set_site_enabled":
+			// get site domain name
+			let siteName = getSiteName(message.data.url);
 			// enable site => remove an exception 
 			if (message.data.toggle) {
-				if (exceptions.includes(message.data.url)) {
-					exceptions.splice(exceptions.indexOf(message.data.url), 1);
+				if (exceptions.includes(siteName)) {
+					exceptions.splice(exceptions.indexOf(siteName), 1);
 				}
 			}
 			// dissable site => add an exception for it
 			else {
-				exceptions.push(message.data.url);
+				exceptions.push(siteName);
 			}
 			browser.storage.local.set({exceptions: exceptions});
 			break;
@@ -84,11 +96,11 @@ function listenForMessages(message, sender, sendResponse) {
 			let newStyle = message.data;
 			redactClassName = newStyle;
 			browser.storage.local.set({redactClassName: newStyle})
-			// get all tabs
+				// get all tabs
 				.then(() => {
 					return browser.tabs.query({});
 				})
-			// send a message with old and new class names to each one
+				// send a message with old and new class names to each one
 				.then(tabs => {
 					for (let tab of tabs) {
 						browser.tabs.sendMessage(tab.id, {oldStyle: oldStyle, newStyle: newStyle});
