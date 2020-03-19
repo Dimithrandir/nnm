@@ -36,17 +36,17 @@ const NWORDS = [
 	*/
 ];
 
-let settings = {};
-let redactClassName = "";
+let gSettings = {};
 
 /*
 Get all the text nodes into a single array
 */
-function getNodes() {
-	let walker = document.createTreeWalker(document.body, window.NodeFilter.SHOW_TEXT, null, false);
+function getNodes(root) {
+	let walker = document.createTreeWalker(root, window.NodeFilter.SHOW_TEXT, null, false);
 	let nodes = [];
 	while (node = walker.nextNode()) {
-		if (node.parentNode.tagName.toLowerCase() !== "script") {
+		// exclude already redacted nodes and scripts
+		if (!node.parentNode.classList.contains(gSettings.redactClassName) && node.parentNode.tagName.toLowerCase() !== "script") {
 			nodes.push(node);	
 		}
 	}
@@ -125,7 +125,7 @@ Search for a single instance of a string. Used to check if a match spans through
 function findRestOfMatch(nodes, lookupText) {
 	// number of nodes the match spans through and its end in the last one
 	let endNode = 0;
-	let endOffset = 0;
+	let endOffset = -1;
 	// for each node
 	for (let i = 0; i < nodes.length; i++) {
 		let nodeText = nodes[i].textContent;
@@ -167,7 +167,7 @@ Create a <span> element with given text content.
 function createSpan(innerText) {
 	let textNode = document.createTextNode(innerText);
 	let spanNode = document.createElement("span");
-	spanNode.classList.add(redactClassName);
+	spanNode.classList.add(gSettings.redactClassName);
 	spanNode.appendChild(textNode);
 	return spanNode;
 }
@@ -179,7 +179,7 @@ function splitNode(node, startOffset, endOffset) {
 
 	// no need of splitting for element nodes, just insert custom style and return
 	if (node.nodeType == Node.ELEMENT_NODE) {
-		node.classList.add(redactClassName);
+		node.classList.add(gSettings.redactClassName);
 		//node.classList.add("redacted-word-border");
 		return;
 	}
@@ -192,7 +192,7 @@ function splitNode(node, startOffset, endOffset) {
 	// create a new span node with the snapped node text content (the match)
 	let newMidTextNode = document.createTextNode(midNode.textContent);
 	let newMidSpanNode = document.createElement("span");
-	newMidSpanNode.classList.add(redactClassName);
+	newMidSpanNode.classList.add(gSettings.redactClassName);
 	//newMidSpanNode.classList.add("redacted-word-border");
 	newMidSpanNode.appendChild(newMidTextNode);
 
@@ -204,12 +204,9 @@ function splitNode(node, startOffset, endOffset) {
 }
 
 /*
-Get all the text nodes in the document, then for each match, apply custom style to the redacted word in the matching text node. If the matching node is just a text node, splits out the matching text in a <span> element. Goes through multiple nodes if the match spans through them. 
+For each of found matches, apply custom style to the redacted word in the matching text node of the given array of nodes. If the matching node is just a text node, splits out the matching text in a <span> element. Goes through multiple nodes if the match spans through them. 
 */
-function redact(ranges, redactedWord) {
-
-	// get all nodes in document 
-	let nodes = getNodes();
+function redact(nodes, ranges, redactedWord) {
 
 	// calculate the redaction offset - length of the redacted text
 	let redactionOffset = redactedWord.length;
@@ -272,6 +269,8 @@ function redact(ranges, redactedWord) {
 Replaces the redacting style with a new class. 
 */
 function changeStyle(oldStyle, newStyle) {
+	// update gSettings 
+	gSettings.redactClassName = newStyle;
 	// get all redacted nodes
 	let redactedNodes = document.getElementsByClassName(oldStyle);
 	if(redactedNodes.length > 0) {
@@ -283,45 +282,66 @@ function changeStyle(oldStyle, newStyle) {
 }
 
 function startRedacting(settings) {
+	// save setting 
+	gSettings = settings;
 	// do nothing if addon dissabled or exception for site added
 	if(!settings.addonEnabled || settings.exception) {
 		return;
 	}
-	redactClassName = settings.redactClassName;
 	// current site matches
 	let totalCount = 0;
 	// for each of the hard coded NWORDS
 	for (let nWord of NWORDS) {
 		// find all the matches
-		let result = findMatches(getNodes(), nWord.query);
+		let result = findMatches(getNodes(document.body), nWord.query);
 		// update total count
 		totalCount += result.length;
 		// redact all the matches
-		redact(result, nWord.redactedWord);
+		redact(getNodes(document.body), result, nWord.redactedWord);
 	}
 	// send new matches count to background script to be stored
-	browser.runtime.sendMessage({action: "set_count", data: totalCount});
+	if (totalCount) {
+		browser.runtime.sendMessage({action: "set_count", data: totalCount});
+	}
+
+	return Promise.resolve();
 }
 
-// get setting from background script
+// MutationObserver to watch for changes being made to the DOM, callback function starts searching and redacting on added nodes
+let observer = new MutationObserver(function(mutations) {
+	// do nothing if addon dissabled or exception for site added
+	if(!gSettings.addonEnabled || gSettings.exception) {
+		return;
+	}
+	// get all newly added nodes
+	let nodes = [];
+	for (let mutation of mutations) {
+		for (let node of mutation.addedNodes) {
+			nodes = nodes.concat(getNodes(node));
+		}
+	}
+	// search and redact them
+	let totalCount = 0;
+	for (let nWord of NWORDS) {
+		let result = findMatches(nodes, nWord.query);
+		totalCount += result.length;
+		redact(nodes, result, nWord.redactedWord);
+	}
+	// send new matches count to background script to be stored
+	if (totalCount) {
+		browser.runtime.sendMessage({action: "set_count", data: totalCount});
+	}
+});
+
+// get setting from background script, then do initial redacting, then watch for changes 
 let gettingStorage = browser.runtime.sendMessage({action: "get_settings"});
-gettingStorage.then(startRedacting);
+gettingStorage
+	.then(startRedacting)
+	.then(() => { 
+		observer.observe(document.body, {childList: true, subtree: true});
+	});
 
 // wait for a message
 browser.runtime.onMessage.addListener((message) => {
 	changeStyle(message.oldStyle, message.newStyle);
 });
-
-/*
-const callback = function(mutationsList, observer) {
-	for (let mutation of mutationsList) {
-		if (mutation.type === 'childList') {
-			console.log(mutation);
-		}
-	}
-};
-
-const observer = new MutationObserver(callback);
-
-// observer.observe(document.body, {childList: true, subtree: true});
-*/

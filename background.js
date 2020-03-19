@@ -85,7 +85,10 @@ function listenForMessages(message, sender, sendResponse) {
 			browser.storage.local.set({exceptions: exceptions});
 			break;
 		case "set_count":
-			currentCount[sender.tab.id] = message.data;
+			if (!currentCount[sender.tab.id]) {
+				currentCount[sender.tab.id] = 0;
+			}
+			currentCount[sender.tab.id] += message.data;
 			nWordCount += message.data;	
 			browser.storage.local.set({nWordCount: nWordCount});
 			break;
