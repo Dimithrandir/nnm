@@ -300,9 +300,7 @@ function startRedacting(settings) {
 		redact(getNodes(document.body), result, nWord.redactedWord);
 	}
 	// send new matches count to background script to be stored
-	if (totalCount) {
-		browser.runtime.sendMessage({action: "set_count", data: totalCount});
-	}
+	browser.runtime.sendMessage({action: "set_count", data: totalCount});
 
 	return Promise.resolve();
 }
@@ -327,7 +325,7 @@ let observer = new MutationObserver(function(mutations) {
 		totalCount += result.length;
 		redact(nodes, result, nWord.redactedWord);
 	}
-	// send new matches count to background script to be stored
+	// send new matches count (if any) to background script to be stored
 	if (totalCount) {
 		browser.runtime.sendMessage({action: "set_count", data: totalCount});
 	}
