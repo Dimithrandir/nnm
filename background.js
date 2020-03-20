@@ -85,10 +85,18 @@ function listenForMessages(message, sender, sendResponse) {
 			browser.storage.local.set({exceptions: exceptions});
 			break;
 		case "set_count":
+			// define counter for new tabs
 			if (!currentCount[sender.tab.id]) {
-				currentCount[sender.tab.id] = 0;
+				currentCount[sender.tab.id] = {url: sender.tab.url, count: 0};
 			}
-			currentCount[sender.tab.id] += message.data;
+			// update count from observed page change
+			if (currentCount[sender.tab.id].url == sender.tab.url) {
+				currentCount[sender.tab.id].count += message.data;
+			}
+			// new url opened in old tab
+			else {
+				currentCount[sender.tab.id] = {url: sender.tab.url, count: message.data};
+			}
 			nWordCount += message.data;	
 			browser.storage.local.set({nWordCount: nWordCount});
 			break;

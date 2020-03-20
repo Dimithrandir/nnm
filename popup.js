@@ -16,7 +16,7 @@ async function init() {
 	settings.url = tabs[0].url;
 	// update html
 	txtTotalNwords.innerText = response.nWordCount || 0;
-	txtPageNwords.innerText = response.currentCount || 0;
+	txtPageNwords.innerText = (response.currentCount) ? response.currentCount.count : 0;
 	chboxExtEnabled.checked = response.addonEnabled;
 	chboxSiteEnabled.checked = !response.exception;
 	
