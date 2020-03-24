@@ -1,14 +1,14 @@
 {
 	"manifest_version": 2,
 	"name": "No N-word Macedonia",
-	"version": "0.9",
+	"version": "1.0",
 
 	"developer": {
 		"name": "Dimithrandir",
 		"url": "https://github.com/Dimithrandir"
 	},
 
-	"description": "Detect and redact the N-word before Macedonia.",
+	"description": "Detect and redact N-words before Macedonia.",
 
 	"icons": {
 		"16": "nnm-16.png",
@@ -37,9 +37,5 @@
 	"browser_action": {
 		"default_title": "No N-word Macedonia",
 		"default_popup": "popup.html"
-	},
-
-	"web_accessible_resources": [
-		"n-words.json"
-	]
+	}
 }
