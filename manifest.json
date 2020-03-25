@@ -9,6 +9,7 @@
 	},
 
 	"description": "Detect and redact N-words before Macedonia.",
+	"homepage_url": "https://github.com/Dimithrandir/nnm",
 
 	"icons": {
 		"16": "nnm-16.png",
