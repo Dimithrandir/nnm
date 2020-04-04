@@ -206,7 +206,7 @@ function splitNode(node, startOffset, endOffset) {
 /*
 For each of found matches, apply custom style to the redacted word in the matching text node of the given array of nodes. If the matching node is just a text node, splits out the matching text in a <span> element. Goes through multiple nodes if the match spans through them. 
 */
-function redact(nodes, ranges, redactedWord) {
+function redactContent(nodes, ranges, redactedWord) {
 
 	// calculate the redaction offset - length of the redacted text
 	let redactionOffset = redactedWord.length;
@@ -266,6 +266,22 @@ function redact(nodes, ranges, redactedWord) {
 }
 
 /*
+Removes all occurances of given phrase in the page title.
+*/
+function redactTitle(nWord) {
+	let counter = 0;
+	let regEx = new RegExp(nWord.query, "gi");
+	let lookups = document.title.matchAll(regEx);
+	// possible multiple occurrences 
+	for (const match of lookups) {
+		let newTitle = document.title.slice(0, match.index) + document.title.slice(match.index + nWord.redactedWord.length, document.title.length);
+		document.title = newTitle;
+		counter++;
+	}
+	return counter;
+}
+
+/*
 Replaces the redacting style with a new class. 
 */
 function changeStyle(oldStyle, newStyle) {
@@ -292,12 +308,14 @@ function startRedacting(settings) {
 	let totalCount = 0;
 	// for each of the hard coded NWORDS
 	for (let nWord of NWORDS) {
+		// find and redact matches in page title
+		totalCount += redactTitle(nWord);
 		// find all the matches
 		let result = findMatches(getNodes(document.body), nWord.query);
 		// update total count
 		totalCount += result.length;
 		// redact all the matches
-		redact(getNodes(document.body), result, nWord.redactedWord);
+		redactContent(getNodes(document.body), result, nWord.redactedWord);
 	}
 	// send new matches count to background script to be stored
 	browser.runtime.sendMessage({action: "set_count", data: totalCount});
@@ -323,7 +341,7 @@ let observer = new MutationObserver(function(mutations) {
 	for (let nWord of NWORDS) {
 		let result = findMatches(nodes, nWord.query);
 		totalCount += result.length;
-		redact(nodes, result, nWord.redactedWord);
+		redactContent(nodes, result, nWord.redactedWord);
 	}
 	// send new matches count (if any) to background script to be stored
 	if (totalCount) {
