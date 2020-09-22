@@ -68,6 +68,11 @@ function listenForMessages(message, sender, sendResponse) {
 		case "set_addon_enabled":
 			addonEnabled = message.data;
 			browser.storage.local.set({addonEnabled: addonEnabled});
+			// set browserAction icon on or off (for all tabs)
+			if (!addonEnabled)
+				browser.browserAction.setIcon({ path: { 16: "img/nnm-16-off.png", 32: "img/nnm-32-off.png" } });
+			else
+				browser.browserAction.setIcon({ path: { 16: "img/nnm-16.png", 32: "img/nnm-32.png" } });
 			break;
 		case "set_site_enabled":
 			// get site domain name
