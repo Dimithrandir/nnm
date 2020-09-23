@@ -31,6 +31,22 @@ function getSiteName(url) {
 }
 
 /*
+Set the browserAction icon. Toggles between ON and OFF icons. If tabId is null, it affects all tabs.
+*/
+function setBrowserActionIcon(toggle, tabId) {
+	browser.browserAction.setIcon({
+		path: toggle ? {
+			16: "img/nnm-16.png",
+			32: "img/nnm-32.png" 
+		} : {
+			16: "img/nnm-16-off.png",
+			32: "img/nnm-32-off.png" 
+		},
+		tabId: tabId
+	});
+}
+
+/*
 Check if anything is stored on startup, insert default values if not.
 */
 function getStorage(storedValues) {
@@ -66,13 +82,13 @@ function listenForMessages(message, sender, sendResponse) {
 			}
 			break;
 		case "set_addon_enabled":
-			addonEnabled = message.data;
+			addonEnabled = message.data.toggle;
 			browser.storage.local.set({addonEnabled: addonEnabled});
 			// set browserAction icon on or off (for all tabs)
-			if (!addonEnabled)
-				browser.browserAction.setIcon({ path: { 16: "img/nnm-16-off.png", 32: "img/nnm-32-off.png" } });
-			else
-				browser.browserAction.setIcon({ path: { 16: "img/nnm-16.png", 32: "img/nnm-32.png" } });
+			setBrowserActionIcon(addonEnabled, null);
+			// if site is whitelisted, don't change back to ON for this tab
+			if (addonEnabled && message.data.exception)
+				setBrowserActionIcon(false, message.data.tabId);
 			break;
 		case "set_site_enabled":
 			// get site domain name
@@ -87,7 +103,15 @@ function listenForMessages(message, sender, sendResponse) {
 			else {
 				exceptions.push(siteName);
 			}
+			// set browserAcrion icon on or off (for current tab only, before it reloads)
+			if (addonEnabled)
+				setBrowserActionIcon(message.data.toggle, message.data.tabId);
+			// store the exception
 			browser.storage.local.set({exceptions: exceptions});
+			break;
+		case "set_icon":
+			// set icon to OFF on content script load for whitelisted sites
+			setBrowserActionIcon(false, sender.tab.id);
 			break;
 		case "set_count":
 			// define counter for new tabs

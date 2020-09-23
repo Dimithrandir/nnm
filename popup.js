@@ -14,6 +14,7 @@ async function init() {
 	let response = await browser.runtime.sendMessage({action: "get_settings", data: {id: tabs[0].id, url: tabs[0].url}});
 	settings = response;
 	settings.url = tabs[0].url;
+	settings.tabId = tabs[0].id;
 	// update html
 	txtTotalNwords.innerText = response.nWordCount || 0;
 	txtPageNwords.innerText = (response.currentCount) ? response.currentCount.count : 0;
@@ -34,12 +35,12 @@ init();
 chboxExtEnabled.onchange = function() {
 	txtEnabled.innerText = (this.checked) ? "Enabled:" : "Disabled:";
 	txtRefresh.style.display = "block";
-	browser.runtime.sendMessage({action: "set_addon_enabled", data: this.checked});
+	browser.runtime.sendMessage({action: "set_addon_enabled", data: {toggle: this.checked, exception: !chboxSiteEnabled.checked, tabId: settings.tabId}});
 };
 
 // add/remove an exception for this site
 chboxSiteEnabled.onchange = function() {
-	browser.runtime.sendMessage({action: "set_site_enabled", data: {url: settings.url, toggle: this.checked}});
+	browser.runtime.sendMessage({action: "set_site_enabled", data: {toggle: this.checked, url: settings.url, tabId: settings.tabId}});
 	txtRefresh.style.display = "block";
 };
 

@@ -289,7 +289,7 @@ function changeStyle(oldStyle, newStyle) {
 	gSettings.redactClassName = newStyle;
 	// get all redacted nodes
 	let redactedNodes = document.getElementsByClassName(oldStyle);
-	if(redactedNodes.length > 0) {
+	if (redactedNodes.length > 0) {
 		// this is a live node list, it changes as the DOM changes, so it's best to change the first element while the list is not empty 
 		while (redactedNodes.length) {
 			redactedNodes[0].classList.replace(oldStyle, newStyle);
@@ -301,7 +301,12 @@ function startRedacting(settings) {
 	// save setting 
 	gSettings = settings;
 	// do nothing if addon dissabled or exception for site added
-	if(!settings.addonEnabled || settings.exception) {
+	if (!settings.addonEnabled) {
+		return;
+	}
+	else if (settings.exception) {
+		// send message to background to change browserAction icon for this tab (the icon set for specific tabs is reset on reload so it has to be set on load)
+		browser.runtime.sendMessage({action: "set_icon"});
 		return;
 	}
 	// current site matches
@@ -326,7 +331,7 @@ function startRedacting(settings) {
 // MutationObserver to watch for changes being made to the DOM, callback function starts searching and redacting on added nodes
 let observer = new MutationObserver(function(mutations) {
 	// do nothing if addon dissabled or exception for site added
-	if(!gSettings.addonEnabled || gSettings.exception) {
+	if (!gSettings.addonEnabled || gSettings.exception) {
 		return;
 	}
 	// get all newly added nodes
