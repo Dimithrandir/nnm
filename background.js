@@ -51,7 +51,7 @@ Check if anything is stored on startup, insert default values if not.
 */
 function getStorage(storedValues) {
 	// check if storage is undefined
-	if (!storedValues.addonEnabled || !storedValues.nWordCount || !storedValues.redactClassName || !storedValues.redactClassName) {
+	if (!storedValues.nWordCount || !storedValues.redactClassName || !storedValues.redactClassName) {
 		// insert default values 
 		browser.storage.local.set(defaultStorage);
 		addonEnabled = defaultStorage.addonEnabled;
