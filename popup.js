@@ -19,7 +19,7 @@ async function init() {
 	txtTotalNwords.innerText = response.nWordCount || 0;
 	txtPageNwords.innerText = (response.currentCount) ? response.currentCount.count : 0;
 	chboxExtEnabled.checked = response.addonEnabled;
-	chboxSiteEnabled.checked = !response.exception;
+	chboxSiteEnabled.checked = !response.whitelisted;
 	
 	let inputs = document.getElementsByTagName("input");
 	for (let element of inputs) {
@@ -35,10 +35,10 @@ init();
 chboxExtEnabled.onchange = function() {
 	txtEnabled.innerText = (this.checked) ? "Enabled:" : "Disabled:";
 	txtRefresh.style.display = "block";
-	browser.runtime.sendMessage({action: "set_addon_enabled", data: {toggle: this.checked, exception: !chboxSiteEnabled.checked, tabId: settings.tabId}});
+	browser.runtime.sendMessage({action: "set_addon_enabled", data: {toggle: this.checked, whitelisted: !chboxSiteEnabled.checked, tabId: settings.tabId}});
 };
 
-// add/remove an exception for this site
+// add/remove this site to/from whitelist
 chboxSiteEnabled.onchange = function() {
 	browser.runtime.sendMessage({action: "set_site_enabled", data: {toggle: this.checked, url: settings.url, tabId: settings.tabId}});
 	txtRefresh.style.display = "block";

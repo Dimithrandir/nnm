@@ -300,11 +300,11 @@ function changeStyle(oldStyle, newStyle) {
 function startRedacting(settings) {
 	// save setting 
 	gSettings = settings;
-	// do nothing if addon dissabled or exception for site added
+	// do nothing if addon dissabled or site whitelisted
 	if (!settings.addonEnabled) {
 		return;
 	}
-	else if (settings.exception) {
+	else if (settings.whitelisted) {
 		// send message to background to change browserAction icon for this tab (the icon set for specific tabs is reset on reload so it has to be set on load)
 		browser.runtime.sendMessage({action: "set_icon"});
 		return;
@@ -330,8 +330,8 @@ function startRedacting(settings) {
 
 // MutationObserver to watch for changes being made to the DOM, callback function starts searching and redacting on added nodes
 let observer = new MutationObserver(function(mutations) {
-	// do nothing if addon dissabled or exception for site added
-	if (!gSettings.addonEnabled || gSettings.exception) {
+	// do nothing if addon dissabled or site whitelisted
+	if (!gSettings.addonEnabled || gSettings.whitelisted) {
 		return;
 	}
 	// get all newly added nodes

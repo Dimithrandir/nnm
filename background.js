@@ -3,7 +3,7 @@ const defaultStorage = {
 	addonEnabled: true,
 	nWordCount: 0,
 	redactClassName: "redacted-word-black",
-	exceptions: []
+	whitelist: []
 };
 
 // current settings
@@ -11,7 +11,7 @@ let addonEnabled = false;
 let nWordCount = 0;
 let currentCount = [];
 let redactClassName = "";
-let exceptions = [];
+let whitelist = [];
 
 /*
 Generic error logger.
@@ -55,14 +55,21 @@ function getStorage(storedValues) {
 		// insert default values 
 		browser.storage.local.set(defaultStorage);
 		addonEnabled = defaultStorage.addonEnabled;
-		exceptions = defaultStorage.exceptions;
 		redactClassName = defaultStorage.redactClassName;
+		whitelist = defaultStorage.whitelist;
 	}
 	else {
 		addonEnabled = storedValues.addonEnabled;
 		nWordCount = storedValues.nWordCount; 
-		exceptions = storedValues.exceptions;
 		redactClassName = storedValues.redactClassName;
+		//a way to refactor exceptions into whitelist while saving old storage
+		if (!storedValues.exceptions) {
+			whitelist = storedValues.whitelist; 
+		}
+		else { 
+			whitelist = storedValues.exceptions;	
+			browser.storage.local.remove("exceptions");
+		}
 	}
 }
 
@@ -74,11 +81,11 @@ function listenForMessages(message, sender, sendResponse) {
 		case "get_settings":
 			// if message was sent from a content script
 			if (sender.envType === "content_child") {
-				sendResponse({addonEnabled: addonEnabled, exception: exceptions.includes(getSiteName(sender.tab.url)), redactClassName: redactClassName});
+				sendResponse({addonEnabled: addonEnabled, whitelisted: whitelist.includes(getSiteName(sender.tab.url)), redactClassName: redactClassName});
 			}
 			// message was sent from a popup
 			else {
-				sendResponse({addonEnabled: addonEnabled, nWordCount: nWordCount, currentCount: currentCount[message.data.id], exception: exceptions.includes(getSiteName(message.data.url)), redactClassName: redactClassName});
+				sendResponse({addonEnabled: addonEnabled, nWordCount: nWordCount, currentCount: currentCount[message.data.id], whitelisted: whitelist.includes(getSiteName(message.data.url)), redactClassName: redactClassName});
 			}
 			break;
 		case "set_addon_enabled":
@@ -87,27 +94,27 @@ function listenForMessages(message, sender, sendResponse) {
 			// set browserAction icon on or off (for all tabs)
 			setBrowserActionIcon(addonEnabled, null);
 			// if site is whitelisted, don't change back to ON for this tab
-			if (addonEnabled && message.data.exception)
+			if (addonEnabled && message.data.whitelisted)
 				setBrowserActionIcon(false, message.data.tabId);
 			break;
 		case "set_site_enabled":
 			// get site domain name
 			let siteName = getSiteName(message.data.url);
-			// enable site => remove an exception 
+			// enable site => remove from whitelist
 			if (message.data.toggle) {
-				if (exceptions.includes(siteName)) {
-					exceptions.splice(exceptions.indexOf(siteName), 1);
+				if (whitelist.includes(siteName)) {
+					whitelist.splice(whitelist.indexOf(siteName), 1);
 				}
 			}
-			// dissable site => add an exception for it
+			// dissable site => add to whitelist
 			else {
-				exceptions.push(siteName);
+				whitelist.push(siteName);
 			}
 			// set browserAcrion icon on or off (for current tab only, before it reloads)
 			if (addonEnabled)
 				setBrowserActionIcon(message.data.toggle, message.data.tabId);
-			// store the exception
-			browser.storage.local.set({exceptions: exceptions});
+			// store the whitelist
+			browser.storage.local.set({whitelist: whitelist});
 			break;
 		case "set_icon":
 			// set icon to OFF on content script load for whitelisted sites
