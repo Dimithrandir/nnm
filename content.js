@@ -180,7 +180,6 @@ function splitNode(node, startOffset, endOffset) {
 	// no need of splitting for element nodes, just insert custom style and return
 	if (node.nodeType == Node.ELEMENT_NODE) {
 		node.classList.add(gSettings.redactClassName);
-		//node.classList.add("redacted-word-border");
 		return;
 	}
 
@@ -193,7 +192,6 @@ function splitNode(node, startOffset, endOffset) {
 	let newMidTextNode = document.createTextNode(midNode.textContent);
 	let newMidSpanNode = document.createElement("span");
 	newMidSpanNode.classList.add(gSettings.redactClassName);
-	//newMidSpanNode.classList.add("redacted-word-border");
 	newMidSpanNode.appendChild(newMidTextNode);
 
 	// insert it after the match text node
