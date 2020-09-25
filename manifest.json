@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "No N-word Macedonia",
-	"version": "1.0.0.1",
+	"version": "1.0.1.0",
 
 	"developer": {
 		"name": "Dimithrandir",
@@ -12,10 +12,10 @@
 	"homepage_url": "https://github.com/Dimithrandir/nnm",
 
 	"icons": {
-		"16": "nnm-16.png",
-		"32": "nnm-32.png",
-		"48": "nnm-48.png",
-		"64": "nnm-64.png"
+		"16": "img/nnm-16.png",
+		"32": "img/nnm-32.png",
+		"48": "img/nnm-48.png",
+		"64": "img/nnm-64.png"
 	},
 
 	"permissions": [
@@ -36,6 +36,10 @@
 	],
 
 	"browser_action": {
+		"default_icon": {
+			"16": "img/nnm-16.png",
+			"32": "img/nnm-32.png"
+		},
 		"default_title": "No N-word Macedonia",
 		"default_popup": "popup.html"
 	}
