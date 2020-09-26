@@ -140,6 +140,7 @@ function listenForMessages(message, sender, sendResponse) {
 			}
 			// update badge
 			browser.browserAction.setBadgeText({text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "", tabId: sender.tab.id});
+			// update and store total count
 			nWordCount += message.data.count;	
 			browser.storage.local.set({nWordCount: nWordCount});
 			break;
