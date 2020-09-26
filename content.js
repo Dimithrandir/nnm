@@ -321,7 +321,7 @@ function startRedacting(settings) {
 		redactContent(getNodes(document.body), result, nWord.redactedWord);
 	}
 	// send new matches count to background script to be stored
-	browser.runtime.sendMessage({action: "set_count", data: totalCount});
+	browser.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: false}});
 
 	return Promise.resolve();
 }
@@ -348,7 +348,7 @@ let observer = new MutationObserver(function(mutations) {
 	}
 	// send new matches count (if any) to background script to be stored
 	if (totalCount) {
-		browser.runtime.sendMessage({action: "set_count", data: totalCount});
+		browser.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: true}});
 	}
 });
 
