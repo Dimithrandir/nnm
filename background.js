@@ -51,7 +51,7 @@ Check if anything is stored on startup, insert default values if not.
 */
 function getStorage(storedValues) {
 	// check if storage is undefined
-	if (!storedValues.nWordCount || !storedValues.redactClassName || !storedValues.redactClassName) {
+	if (!storedValues.nWordCount || !storedValues.redactClassName || !storedValues.redactClassName || !storedValues.whitelist) {
 		// insert default values 
 		browser.storage.local.set(defaultStorage);
 		addonEnabled = defaultStorage.addonEnabled;
@@ -62,14 +62,7 @@ function getStorage(storedValues) {
 		addonEnabled = storedValues.addonEnabled;
 		nWordCount = storedValues.nWordCount; 
 		redactClassName = storedValues.redactClassName;
-		//a way to refactor exceptions into whitelist while saving old storage
-		if (!storedValues.exceptions) {
-			whitelist = storedValues.whitelist; 
-		}
-		else { 
-			whitelist = storedValues.exceptions;	
-			browser.storage.local.remove("exceptions");
-		}
+		whitelist = storedValues.whitelist; 
 	}
 }
 
@@ -140,6 +133,7 @@ function listenForMessages(message, sender, sendResponse) {
 			}
 			// update badge
 			browser.browserAction.setBadgeText({text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "", tabId: sender.tab.id});
+			// update and store total count
 			nWordCount += message.data.count;	
 			browser.storage.local.set({nWordCount: nWordCount});
 			break;
