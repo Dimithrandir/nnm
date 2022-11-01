@@ -1,3 +1,6 @@
+// make API browser agnostic
+const webext = ( typeof browser === "object" ) ? browser : chrome;
+
 // each object contains the word or phase to find in the document, and the part of it to be redacted
 const NWORDS = [
 	{
@@ -304,7 +307,7 @@ function startRedacting(settings) {
 	}
 	else if (settings.whitelisted) {
 		// send message to background to change browserAction icon for this tab (the icon set for specific tabs is reset on reload so it has to be set on load)
-		browser.runtime.sendMessage({action: "set_icon"});
+		webext.runtime.sendMessage({action: "set_icon"});
 		return;
 	}
 	// current site matches
@@ -321,7 +324,7 @@ function startRedacting(settings) {
 		redactContent(getNodes(document.body), result, nWord.redactedWord);
 	}
 	// send new matches count to background script to be stored
-	browser.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: false}});
+	webext.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: false}});
 
 	return Promise.resolve();
 }
@@ -348,12 +351,12 @@ let observer = new MutationObserver(function(mutations) {
 	}
 	// send new matches count (if any) to background script to be stored
 	if (totalCount) {
-		browser.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: true}});
+		webext.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: true}});
 	}
 });
 
 // get setting from background script, then do initial redacting, then watch for changes 
-let gettingStorage = browser.runtime.sendMessage({action: "get_settings"});
+let gettingStorage = webext.runtime.sendMessage({action: "get_settings"});
 gettingStorage
 	.then(startRedacting)
 	.then(() => { 
@@ -361,6 +364,6 @@ gettingStorage
 	});
 
 // wait for a message
-browser.runtime.onMessage.addListener((message) => {
+webext.runtime.onMessage.addListener((message) => {
 	changeStyle(message.oldStyle, message.newStyle);
 });

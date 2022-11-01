@@ -1,3 +1,6 @@
+// make API browser agnostic
+const webext = ( typeof browser === "object" ) ? browser : chrome;
+
 let settings = {};
 
 let txtRefresh = document.getElementById("txt_refresh");
@@ -9,9 +12,9 @@ let chboxSiteEnabled = document.getElementById("chbox_site_enabled");
 
 async function init() {
 	// get current tab id
-	let tabs = await browser.tabs.query({active: true, currentWindow: true});
+	let tabs = await webext.tabs.query({active: true, currentWindow: true});
 	// send it to background and get its data from storage
-	let response = await browser.runtime.sendMessage({action: "get_settings", data: {id: tabs[0].id, url: tabs[0].url}});
+	let response = await webext.runtime.sendMessage({action: "get_settings", data: {id: tabs[0].id, url: tabs[0].url}});
 	settings = response;
 	settings.url = tabs[0].url;
 	settings.tabId = tabs[0].id;
@@ -35,19 +38,19 @@ init();
 chboxExtEnabled.onchange = function() {
 	txtEnabled.innerText = (this.checked) ? "Enabled:" : "Disabled:";
 	txtRefresh.style.display = "block";
-	browser.runtime.sendMessage({action: "set_addon_enabled", data: {toggle: this.checked, whitelisted: !chboxSiteEnabled.checked, tabId: settings.tabId}});
+	webext.runtime.sendMessage({action: "set_addon_enabled", data: {toggle: this.checked, whitelisted: !chboxSiteEnabled.checked, tabId: settings.tabId}});
 };
 
 // add/remove this site to/from whitelist
 chboxSiteEnabled.onchange = function() {
-	browser.runtime.sendMessage({action: "set_site_enabled", data: {toggle: this.checked, url: settings.url, tabId: settings.tabId}});
+	webext.runtime.sendMessage({action: "set_site_enabled", data: {toggle: this.checked, url: settings.url, tabId: settings.tabId}});
 	txtRefresh.style.display = "block";
 };
 
 // wait for a click event 
 document.addEventListener('click', (e) => {
 	if (e.target.type === "radio" && settings.redactClassName != e.target.value) {
-		browser.runtime.sendMessage({action: "set_style", data: e.target.value})
+		webext.runtime.sendMessage({action: "set_style", data: e.target.value})
 			.then(() => {settings.redactClassName = e.target.value;});
 	}
 });

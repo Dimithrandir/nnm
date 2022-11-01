@@ -6,6 +6,10 @@ const defaultStorage = {
 	whitelist: []
 };
 
+// make API browser agnostic
+const webext = ( typeof browser === "object" ) ? browser : chrome;
+const webextAction = webext.browserAction || webext.action;
+
 // current settings
 let addonEnabled = false;
 let nWordCount = 0;
@@ -31,10 +35,10 @@ function getSiteName(url) {
 }
 
 /*
-Set the browserAction icon. Toggles between ON and OFF icons. If tabId is null, it affects all tabs.
+Set the action icon. Toggles between ON and OFF icons. If tabId is null, it affects all tabs.
 */
-function setBrowserActionIcon(toggle, tabId) {
-	browser.browserAction.setIcon({
+function setActionIcon(toggle, tabId) {
+	webextAction.setIcon({
 		path: toggle ? {
 			16: "img/nnm-16.png",
 			32: "img/nnm-32.png" 
@@ -53,7 +57,7 @@ function getStorage(storedValues) {
 	// check if storage is undefined
 	if (!storedValues.nWordCount || !storedValues.redactClassName || !storedValues.redactClassName || !storedValues.whitelist) {
 		// insert default values 
-		browser.storage.local.set(defaultStorage);
+		webext.storage.local.set(defaultStorage);
 		addonEnabled = defaultStorage.addonEnabled;
 		redactClassName = defaultStorage.redactClassName;
 		whitelist = defaultStorage.whitelist;
@@ -73,7 +77,7 @@ function listenForMessages(message, sender, sendResponse) {
 	switch(message.action) {
 		case "get_settings":
 			// if message was sent from a content script
-			if (sender.envType === "content_child") {
+			if (message.data == null) {
 				sendResponse({addonEnabled: addonEnabled, whitelisted: whitelist.includes(getSiteName(sender.tab.url)), redactClassName: redactClassName});
 			}
 			// message was sent from a popup
@@ -83,12 +87,12 @@ function listenForMessages(message, sender, sendResponse) {
 			break;
 		case "set_addon_enabled":
 			addonEnabled = message.data.toggle;
-			browser.storage.local.set({addonEnabled: addonEnabled});
-			// set browserAction icon on or off (for all tabs)
-			setBrowserActionIcon(addonEnabled, null);
+			webext.storage.local.set({addonEnabled: addonEnabled});
+			// set action icon on or off (for all tabs)
+			setActionIcon(addonEnabled, null);
 			// if site is whitelisted, don't change back to ON for this tab
 			if (addonEnabled && message.data.whitelisted)
-				setBrowserActionIcon(false, message.data.tabId);
+				setActionIcon(false, message.data.tabId);
 			// delete current counters for all tabs when disabled
 			if (!addonEnabled)
 				currentCount = [];
@@ -106,15 +110,15 @@ function listenForMessages(message, sender, sendResponse) {
 			else {
 				whitelist.push(siteName);
 			}
-			// set browserAcrion icon on or off (for current tab only, before it reloads)
+			// set action icon on or off (for current tab only, before it reloads)
 			if (addonEnabled)
-				setBrowserActionIcon(message.data.toggle, message.data.tabId);
+				setActionIcon(message.data.toggle, message.data.tabId);
 			// store the whitelist
-			browser.storage.local.set({whitelist: whitelist});
+			webext.storage.local.set({whitelist: whitelist});
 			break;
 		case "set_icon":
 			// set icon to OFF on content script load for whitelisted sites
-			setBrowserActionIcon(false, sender.tab.id);
+			setActionIcon(false, sender.tab.id);
 			// delete current counter for this tab
 			currentCount[sender.tab.id] = null;
 			break;
@@ -131,11 +135,13 @@ function listenForMessages(message, sender, sendResponse) {
 			else {
 				currentCount[sender.tab.id] = {url: sender.tab.url, count: message.data.count};
 			}
+			// set badge color
+			webextAction.setBadgeBackgroundColor({color: "#666666"});
 			// update badge
-			browser.browserAction.setBadgeText({text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "", tabId: sender.tab.id});
+			webextAction.setBadgeText({text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "", tabId: sender.tab.id});
 			// update and store total count
 			nWordCount += message.data.count;	
-			browser.storage.local.set({nWordCount: nWordCount});
+			webext.storage.local.set({nWordCount: nWordCount});
 			break;
 		case "set_style":
 			// current class name 
@@ -143,15 +149,15 @@ function listenForMessages(message, sender, sendResponse) {
 			// new class name selected in the popup
 			let newStyle = message.data;
 			redactClassName = newStyle;
-			browser.storage.local.set({redactClassName: newStyle})
+			webext.storage.local.set({redactClassName: newStyle})
 				// get all tabs
 				.then(() => {
-					return browser.tabs.query({});
+					return webext.tabs.query({});
 				})
 				// send a message with old and new class names to each one
 				.then(tabs => {
 					for (let tab of tabs) {
-						browser.tabs.sendMessage(tab.id, {oldStyle: oldStyle, newStyle: newStyle});
+						webext.tabs.sendMessage(tab.id, {oldStyle: oldStyle, newStyle: newStyle});
 					}
 				})
 				.catch(onError);
@@ -161,12 +167,17 @@ function listenForMessages(message, sender, sendResponse) {
 	}
 }
 
-// check the storage on startup
-let gettingStoredValues = browser.storage.local.get();
+// check the storage on load
+let gettingStoredValues = webext.storage.local.get();
 gettingStoredValues.then(getStorage, onError);
 
-// set badge color
-browser.browserAction.setBadgeBackgroundColor({color: "#666666"});
+// check the storage and set icon on browser startup
+webext.runtime.onStartup.addListener(() => {
+	let gettingStoredValues = webext.storage.local.get();
+	gettingStoredValues.then(getStorage, onError).then(() => {
+		setActionIcon(addonEnabled, null);
+	});
+})
 
 // wait for a message from content script or addon popup
-browser.runtime.onMessage.addListener(listenForMessages);
+webext.runtime.onMessage.addListener(listenForMessages);

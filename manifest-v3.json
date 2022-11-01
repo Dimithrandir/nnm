@@ -1,0 +1,43 @@
+{
+	"manifest_version": 3,
+	"name": "No N-word Macedonia",
+	"version": "1.0.3",
+
+	"author": "Dimithrandir",
+
+	"description": "Detect and redact N-words before Macedonia.",
+	"homepage_url": "https://github.com/Dimithrandir/nnm",
+
+	"icons": {
+		"16": "img/nnm-16.png",
+		"32": "img/nnm-32.png",
+		"48": "img/nnm-48.png",
+		"64": "img/nnm-64.png"
+	},
+
+	"permissions": [
+		"tabs",
+		"storage"
+	],
+	
+	"background": {
+		"service_worker": "background.js"
+	},
+
+	"content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"css": ["content.css"],
+			"js": ["content.js"]
+		}
+	],
+
+	"action": {
+		"default_icon": {
+			"16": "img/nnm-16.png",
+			"32": "img/nnm-32.png"
+		},
+		"default_title": "No N-word Macedonia",
+		"default_popup": "popup.html"
+	}
+}
