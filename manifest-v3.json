@@ -12,7 +12,8 @@
 		"16": "img/nnm-16.png",
 		"32": "img/nnm-32.png",
 		"48": "img/nnm-48.png",
-		"64": "img/nnm-64.png"
+		"64": "img/nnm-64.png",
+		"128": "img/nnm-128.png"
 	},
 
 	"permissions": [

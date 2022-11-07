@@ -20,7 +20,7 @@ async function init() {
 	settings.tabId = tabs[0].id;
 	// update html
 	txtTotalNwords.innerText = response.nWordCount || 0;
-	txtPageNwords.innerText = (response.currentCount) ? response.currentCount.count : 0;
+	txtPageNwords.innerText = (response.currentCount && !response.whitelisted) ? response.currentCount.count : 0;
 	chboxExtEnabled.checked = response.addonEnabled;
 	chboxSiteEnabled.checked = !response.whitelisted;
 	

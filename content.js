@@ -136,8 +136,15 @@ function findRestOfMatch(nodes, lookupText) {
 		let regEx1 = new RegExp(lookupText, "gi");
 		// escape special characters if any in text node
 		let regEx2 = new RegExp(nodeText.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), "gi");
-		let lookupPos1 = nodeText.search(regEx1);
-		let lookupPos2 = lookupText.search(regEx2);
+		let lookupPos1 = -1;
+		let lookupPos2 = -1;
+		try {
+			lookupPos1 = nodeText.search(regEx1);
+			lookupPos2 = lookupText.search(regEx2);
+		}
+		catch (error) {
+			continue;
+		}
 		// lookup text ends in current node
 		if (lookupPos1 == 0) {
 			endNode = i + 1;

@@ -7,7 +7,7 @@ const defaultStorage = {
 };
 
 // make API browser agnostic
-const webext = ( typeof browser === "object" ) ? browser : chrome;
+const [webext, manV3] = (typeof browser === "object") ? [browser, false] : [chrome, true];
 const webextAction = webext.browserAction || webext.action;
 
 // current settings
@@ -78,12 +78,37 @@ function listenForMessages(message, sender, sendResponse) {
 		case "get_settings":
 			// if message was sent from a content script
 			if (message.data == null) {
-				sendResponse({addonEnabled: addonEnabled, whitelisted: whitelist.includes(getSiteName(sender.tab.url)), redactClassName: redactClassName});
+				sendResponse({
+					addonEnabled: addonEnabled,
+					whitelisted: whitelist.includes(getSiteName(sender.tab.url)),
+					redactClassName: redactClassName
+				});
 			}
 			// message was sent from a popup
 			else {
-				sendResponse({addonEnabled: addonEnabled, nWordCount: nWordCount, currentCount: currentCount[message.data.id], whitelisted: whitelist.includes(getSiteName(message.data.url)), redactClassName: redactClassName});
+				if (manV3) {
+					key = message.data.id.toString();
+					webext.storage.session.get(key, (count) => {
+						sendResponse({
+							addonEnabled: addonEnabled,
+							nWordCount: nWordCount,
+							currentCount: {count: count[key] || 0},
+							whitelisted: whitelist.includes(getSiteName(message.data.url)),
+							redactClassName: redactClassName
+						});
+					});
+				}
+				else {
+					sendResponse({
+						addonEnabled: addonEnabled,
+						nWordCount: nWordCount,
+						currentCount: currentCount[message.data.id],
+						whitelisted: whitelist.includes(getSiteName(message.data.url)),
+						redactClassName: redactClassName
+					});
+				}
 			}
+			return true;
 			break;
 		case "set_addon_enabled":
 			addonEnabled = message.data.toggle;
@@ -94,8 +119,12 @@ function listenForMessages(message, sender, sendResponse) {
 			if (addonEnabled && message.data.whitelisted)
 				setActionIcon(false, message.data.tabId);
 			// delete current counters for all tabs when disabled
-			if (!addonEnabled)
-				currentCount = [];
+			if (!addonEnabled) {
+				if (manV3)
+					webext.storage.session.clear();
+				else
+					currentCount = [];
+			}
 			break;
 		case "set_site_enabled":
 			// get site domain name
@@ -120,28 +149,64 @@ function listenForMessages(message, sender, sendResponse) {
 			// set icon to OFF on content script load for whitelisted sites
 			setActionIcon(false, sender.tab.id);
 			// delete current counter for this tab
-			currentCount[sender.tab.id] = null;
+			if (manV3)
+				webext.storage.session.remove(sender.tab.id.toString())
+			else
+				currentCount[sender.tab.id] = null;
 			break;
 		case "set_count":
-			// define counter for new tabs
-			if (!currentCount[sender.tab.id]) {
-				currentCount[sender.tab.id] = {url: sender.tab.url, count: 0};
+			if (manV3) {
+				webext.storage.session.get(sender.tab.id.toString()).then((count) => {
+					// define counter for new tabs
+					if (!count) {
+						count = 0;
+					}
+					// update count from observed page change
+					if (message.data.mutation) {
+						count += message.data.count;
+					}
+					// new url opened
+					else {
+						count = message.data.count;
+					}
+					// set badge color
+					webextAction.setBadgeBackgroundColor({color: "#666666"});
+					// update badge
+					webextAction.setBadgeText({
+						text: (count > 0) ? count.toString() : "",
+						tabId: sender.tab.id
+					});
+					// update and store total count
+					nWordCount += message.data.count;
+					webext.storage.local.set({nWordCount: nWordCount});
+					webext.storage.session.set({[sender.tab.id]: count});
+					return true;
+				});
 			}
-			// update count from observed page change
-			if (message.data.mutation) {
-				currentCount[sender.tab.id].count += message.data.count;
-			}
-			// new url opened
 			else {
-				currentCount[sender.tab.id] = {url: sender.tab.url, count: message.data.count};
+				// define counter for new tabs
+				if (!currentCount[sender.tab.id]) {
+					currentCount[sender.tab.id] = {url: sender.tab.url, count: 0};
+				}
+				// update count from observed page change
+				if (message.data.mutation) {
+					currentCount[sender.tab.id].count += message.data.count;
+				}
+				// new url opened
+				else {
+					currentCount[sender.tab.id] = {url: sender.tab.url, count: message.data.count};
+				}
+				// set badge color
+				webextAction.setBadgeBackgroundColor({color: "#666666"});
+				// update badge
+				webextAction.setBadgeText({
+					text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "",
+					tabId: sender.tab.id
+				});
+				// update and store total count
+				nWordCount += message.data.count;
+				webext.storage.local.set({nWordCount: nWordCount});
 			}
-			// set badge color
-			webextAction.setBadgeBackgroundColor({color: "#666666"});
-			// update badge
-			webextAction.setBadgeText({text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "", tabId: sender.tab.id});
-			// update and store total count
-			nWordCount += message.data.count;	
-			webext.storage.local.set({nWordCount: nWordCount});
 			break;
 		case "set_style":
 			// current class name 
