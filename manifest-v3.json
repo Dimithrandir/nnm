@@ -22,7 +22,7 @@
 	],
 	
 	"background": {
-		"service_worker": "background.js"
+		"service_worker": "service_worker.js"
 	},
 
 	"content_scripts": [
@@ -40,5 +40,7 @@
 		},
 		"default_title": "No N-word Macedonia",
 		"default_popup": "popup.html"
-	}
+	},
+
+	"id": "oixs@dimithrandir.me"
 }
