@@ -131,8 +131,6 @@ function listenForMessages(message, sender, sendResponse) {
 			else {
 				currentCount[sender.tab.id] = {url: sender.tab.url, count: message.data.count};
 			}
-			// set badge color
-			browser.browserAction.setBadgeBackgroundColor({color: "#666666"});
 			// update badge
 			browser.browserAction.setBadgeText({
 				text: (currentCount[sender.tab.id].count > 0) ? (currentCount[sender.tab.id].count).toString() : "",
