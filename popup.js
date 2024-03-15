@@ -11,6 +11,10 @@ let chboxExtEnabled = document.getElementById("chbox_addon_enabled");
 let chboxSiteEnabled = document.getElementById("chbox_site_enabled");
 
 async function init() {
+	// localize labels
+	document.querySelectorAll('[data-locale]').forEach((span) => {
+		span.innerText = webext.i18n.getMessage(span.dataset.locale);
+	});
 	// get current tab id
 	let tabs = await webext.tabs.query({active: true, currentWindow: true});
 	// send it to background and get its data from storage
@@ -21,6 +25,7 @@ async function init() {
 	// update html
 	txtTotalNwords.innerText = response.nWordCount || 0;
 	txtPageNwords.innerText = (response.currentCount && !response.whitelisted) ? response.currentCount.count : 0;
+	txtEnabled.innerText = (response.addonEnabled) ? webext.i18n.getMessage("enabled") : webext.i18n.getMessage("disabled");
 	chboxExtEnabled.checked = response.addonEnabled;
 	chboxSiteEnabled.checked = !response.whitelisted;
 	
@@ -36,7 +41,7 @@ init();
 
 // enable/disable toggle checkbox
 chboxExtEnabled.onchange = function() {
-	txtEnabled.innerText = (this.checked) ? "Enabled:" : "Disabled:";
+	txtEnabled.innerText = (this.checked) ? webext.i18n.getMessage("enabled") : webext.i18n.getMessage("disabled");
 	txtRefresh.style.display = "block";
 	webext.runtime.sendMessage({action: "set_addon_enabled", data: {toggle: this.checked, whitelisted: !chboxSiteEnabled.checked, tabId: settings.tabId}});
 };

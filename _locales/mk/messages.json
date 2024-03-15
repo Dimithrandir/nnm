@@ -1,0 +1,58 @@
+{
+	"extensionDescription": {
+		"message": "Наоѓа и пречкртува претставки пред Македонија.",
+		"description": "Description of the extension."
+	},
+
+	"wordsFound": {
+		"message": "Најдени зборови"
+	},
+
+	"total": {
+		"message": "Вкупно:"
+	},
+
+	"thisPage": {
+		"message": "Оваа страница:"
+	},
+
+	"redactionStatus": {
+		"message": "Статус"
+	},
+
+	"enabled": {
+		"message": "Вклучено:"
+	},
+
+	"disabled": {
+		"message": "Исклучено:"
+	},
+
+	"thisSite": {
+		"message": "Овој домен:"
+	},
+
+	"redactionStyle": {
+		"message": "Стил"
+	},
+
+	"struckthrough": {
+		"message": "Пречкртано"
+	},
+
+	"bordered": {
+		"message": "Заокружено"
+	},
+
+	"blackened": {
+		"message": "Зацрнето"
+	},
+
+	"hidden": {
+		"message": "Скриено"
+	},
+
+	"refresh": {
+		"message": "Отворете ја страницата повторно за измените да добијат ефект."
+	}
+}

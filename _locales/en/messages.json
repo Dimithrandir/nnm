@@ -1,0 +1,58 @@
+{
+	"extensionDescription": {
+		"message": "Detect and redact N-words before Macedonia.",
+		"description": "Description of the extension."
+	},
+
+	"wordsFound": {
+		"message": "N-words found"
+	},
+
+	"total": {
+		"message": "Total:"
+	},
+
+	"thisPage": {
+		"message": "This page:"
+	},
+
+	"redactionStatus": {
+		"message": "Redaction status"
+	},
+
+	"enabled": {
+		"message": "Enabled:"
+	},
+
+	"disabled": {
+		"message": "Disabled:"
+	},
+
+	"thisSite": {
+		"message": "This site:"
+	},
+
+	"redactionStyle": {
+		"message": "Redaction style"
+	},
+
+	"struckthrough": {
+		"message": "Struckthrough"
+	},
+
+	"bordered": {
+		"message": "Bordered"
+	},
+
+	"blackened": {
+		"message": "Blackened"
+	},
+
+	"hidden": {
+		"message": "Hidden"
+	},
+
+	"refresh": {
+		"message": "Refresh page for changes to take effect."
+	}
+}
