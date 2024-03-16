@@ -169,6 +169,14 @@ function listenForMessages(message, sender, sendResponse) {
 let gettingStoredValues = browser.storage.local.get();
 gettingStoredValues.then(getStorage, onError).then(() => {
 	setBrowserActionIcon(addonEnabled, null);
+	// set the correct icon for the home page tab (the first tab open on browser launch) if whitelisted
+	if (addonEnabled) {
+		browser.tabs.query({active: true}).then((tabs) => {
+			tabs.forEach((tab) => {
+				setBrowserActionIcon(!whitelist.includes(getSiteName(tab.url)), tab.id);
+			});
+		});
+	}
 	browser.browserAction.setBadgeBackgroundColor({color: "#666666"});
 });
 

@@ -178,8 +178,16 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // check status on browser startup
 chrome.runtime.onStartup.addListener(() => {
-	chrome.storage.local.get("addonEnabled").then((result) => {
+	chrome.storage.local.get(["addonEnabled", "whitelist"]).then((result) => {
 		setActionIcon(result.addonEnabled, null);
+		// set the correct icon for the home page tab (the first tab open on browser launch) if whitelisted
+		if (result.addonEnabled) {
+			chrome.tabs.query({active: true}).then((tabs) => {
+				tabs.forEach((tab) => {
+					setActionIcon(!result.whitelist.includes(getSiteName(tab.url)), tab.id);
+				});
+			});
+		}
 		chrome.action.setBadgeBackgroundColor({color: "#666666"});
 	});
 });
