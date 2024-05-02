@@ -48,6 +48,10 @@
 		"message": "Blackened"
 	},
 
+	"whitened": {
+		"message": "Whitened"
+	},
+
 	"hidden": {
 		"message": "Hidden"
 	},

@@ -48,6 +48,10 @@
 		"message": "Зацрнето"
 	},
 
+	"whitened": {
+		"message": "Избелено"
+	},
+
 	"hidden": {
 		"message": "Скриено"
 	},
