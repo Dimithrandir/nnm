@@ -41,6 +41,9 @@ const NWORDS = [
 
 let gSettings = {};
 
+// original page title as displayed on page load or after a mutation, used for more convenient style change
+let titleOriginal = document.title;
+
 /*
 Get all the text nodes into a single array
 */
@@ -57,8 +60,8 @@ function getNodes(root) {
 }
 
 /*
-Tries to imitate Mozilla's browser extension "find" API. Looks up a given string in an array of text nodes. Matches are stored with the indices of the nodes the lookup word begins and ends in, and the position within those text nodes. 
-For each text node, searches the given text within it at first. Then searches substructing substrings of it at the end of the node. If a match if found, it might span over multiple text nodes, so a helper function is utilized. 
+Tries to imitate Mozilla's browser extension "find" API. Looks up a given string in an array of text nodes. Matches are stored with the indices of the nodes the lookup word begins and ends in, and the position within those text nodes.
+For each text node, searches the given text within it at first. Then searches subtracting substrings of it at the end of the node. If a match if found, it might span over multiple text nodes, so a helper function is utilized.
 */
 function findMatches(nodes, lookupWord) {
 	// keep matches in an array
@@ -72,16 +75,16 @@ function findMatches(nodes, lookupWord) {
 		let endTextNodePos = i;
 		let startOffset = 0;
 		let endOffset = 0;
-		// the lookup text will be modiified, store it separately
+		// the lookup text will be modified, store it separately
 		let lookupText = lookupWord;
 		// search for current lookup text in current text node
 		let regEx = new RegExp(lookupText, "gi");
 		let lookups = nodeText.matchAll(regEx);
-		// possible multiple occurrences 
+		// possible multiple occurrences
 		for (const match of lookups) {
-			// add it as a match 
+			// add it as a match
 			matches.push({
-				startTextNodePos: startTextNodePos, 
+				startTextNodePos: startTextNodePos,
 				endTextNodePos: endTextNodePos,
 				startOffset: match.index,
 				endOffset: match.index + lookupText.length,
@@ -99,20 +102,20 @@ function findMatches(nodes, lookupWord) {
 			let lookupPos = nodeText.search(regEx);
 			// if there's a match and it's at the text node end
 			if (lookupPos > -1 && lookupPos == nodeText.length - lookupText.length) {
-				// see if it continues through next nodes 
+				// see if it continues through next nodes
 				let ends = findRestOfMatch(nodes.slice(i+1), lookupTextRest);
 				// if it does
 				if (ends[1] != -1) {
-					// add another match 
+					// add another match
 					matches.push({
-						startTextNodePos: startTextNodePos, 
-						endTextNodePos: i + ends[0], 
-						startOffset: lookupPos, 
-						endOffset: ends[1], 
+						startTextNodePos: startTextNodePos,
+						endTextNodePos: i + ends[0],
+						startOffset: lookupPos,
+						endOffset: ends[1],
 						text: lookupWord});
 				}
-				// jump the amount of nodes that have been checked 
-				i += ends[0]; 
+				// jump the amount of nodes that have been checked
+				i += ends[0];
 				break;
 			}
 		} while (lookupText);
@@ -212,29 +215,29 @@ function splitNode(node, startOffset, endOffset) {
 }
 
 /*
-For each of found matches, apply custom style to the redacted word in the matching text node of the given array of nodes. If the matching node is just a text node, splits out the matching text in a <span> element. Goes through multiple nodes if the match spans through them. 
+For each of found matches, apply custom style to the redacted word in the matching text node of the given array of nodes. If the matching node is just a text node, splits out the matching text in a <span> element. Goes through multiple nodes if the match spans through them.
 */
 function redactContent(nodes, ranges, redactedWord) {
 
 	// calculate the redaction offset - length of the redacted text
 	let redactionOffset = redactedWord.length;
 
-	// iterate backwards through the matches (itterating backwards makes it easier to refference nodes with multiple matches. Plus, it's faster ;)
+	// iterate backwards through the matches (iterating backwards makes it easier to reference nodes with multiple matches. Plus, it's faster ;)
 	for (let i = ranges.length-1; i >= 0; i--) {
 
 		// current match
 		let range = ranges[i];
-		// length of the query text (same for every range item) 
+		// length of the query text (same for every range item)
 		let textLength = range.text.length;
 
-		// match is completely in one node 
+		// match is completely in one node
 		if (range.startTextNodePos == range.endTextNodePos) {
 			// simply get the node
 			let node = nodes[range.startTextNodePos];
 			// and split it at the redaction offset
 			splitNode(node, range.startOffset, range.startOffset + redactionOffset);
 		}
-		// match spans over mulitple nodes
+		// match spans over multiple nodes
 		else {
 			// last node
 			let lastNode = nodes[range.endTextNodePos];
@@ -250,7 +253,7 @@ function redactContent(nodes, ranges, redactedWord) {
 			else // count the matched text we just passed
 				notRedactedSoFar += lastNode.endOffset;
 
-			// iterate through all the middle nodes a match spans through. Do it backwards to keep consistensy.
+			// iterate through all the middle nodes a match spans through. Do it backwards to keep consistency.
 			for (let j = range.endTextNodePos-1; j > range.startTextNodePos; j--) {
 				// current node
 				let middleNode = nodes[j];
@@ -277,38 +280,72 @@ function redactContent(nodes, ranges, redactedWord) {
 Removes all occurances of given phrase in the page title.
 */
 function redactTitle(nWord) {
+
 	let counter = 0;
 	let regEx = new RegExp(nWord.query, "gi");
-	let lookups = document.title.matchAll(regEx);
-	// possible multiple occurrences 
-	for (const match of lookups) {
-		let newTitle = document.title.slice(0, match.index) + document.title.slice(match.index + nWord.redactedWord.length, document.title.length);
-		document.title = newTitle;
-		counter++;
-	}
+
+	document.title = document.title.replaceAll(regEx, (match) => {
+		// slice the match instead of using nWord.redactedWord to preserve the letter case (for border & strike)
+		let section1 = match.slice(0, nWord.redactedWord.length);
+		let section2 = match.slice(nWord.redactedWord.length);
+		let redactedSection = "";
+		switch(gSettings.redactClassName) {
+			case "redacted-word-border":
+				redactedSection = "[[" + section1 + "]]";
+				break;
+			case "redacted-word-strike":
+				redactedSection = [...section1].join("\̵");
+				break;
+			case "redacted-word-black":
+				redactedSection = Array(nWord.redactedWord.length).fill("█").join("");
+				break;
+			case "redacted-word-white":
+				redactedSection = Array(nWord.redactedWord.length).fill("_").join("");
+				break;
+			default:
+				// redacted-word-hidden - redactedSection remains empty
+				break;
+		}
+		counter += 1;
+		return redactedSection + section2;
+	});
+
 	return counter;
 }
 
 /*
-Replaces the redacting style with a new class. 
+Replaces the redacting style with a new class for body elements and replaces title.
 */
 function changeStyle(oldStyle, newStyle) {
-	// update gSettings 
+	// update gSettings
 	gSettings.redactClassName = newStyle;
+
 	// get all redacted nodes
 	let redactedNodes = document.getElementsByClassName(oldStyle);
 	if (redactedNodes.length > 0) {
-		// this is a live node list, it changes as the DOM changes, so it's best to change the first element while the list is not empty 
+		// this is a live node list, it changes as the DOM changes, so it's best to change the first element while the list is not empty
 		while (redactedNodes.length) {
 			redactedNodes[0].classList.replace(oldStyle, newStyle);
 		}
 	}
+
+	// change title redacting style, only if title has been redacted already and addon enabled
+	if (document.title != titleOriginal && gSettings.addonEnabled && !gSettings.whitelisted) {
+		document.title = titleOriginal;
+		// disconnect title observer before making OUR changes
+		titleObserver.disconnect();
+		for (let nWord of NWORDS) {
+			redactTitle(nWord);
+		}
+		// continue observing title changes
+		titleObserver.observe(document.head.querySelector("title"), {childList: true, subtree: true});
+	}
 }
 
 function startRedacting(settings) {
-	// save setting 
+	// save setting
 	gSettings = settings;
-	// do nothing if addon dissabled or site whitelisted
+	// do nothing if addon disabled or site whitelisted
 	if (!settings.addonEnabled) {
 		return;
 	}
@@ -337,8 +374,8 @@ function startRedacting(settings) {
 }
 
 // MutationObserver to watch for changes being made to the DOM, callback function starts searching and redacting on added nodes
-let observer = new MutationObserver(function(mutations) {
-	// do nothing if addon dissabled or site whitelisted
+let bodyObserver = new MutationObserver(function(mutations) {
+	// do nothing if addon disabled or site whitelisted
 	if (!gSettings.addonEnabled || gSettings.whitelisted) {
 		return;
 	}
@@ -362,12 +399,30 @@ let observer = new MutationObserver(function(mutations) {
 	}
 });
 
-// get setting from background script, then do initial redacting, then watch for changes 
+// separate MutationObserver to watch for title changes
+let titleObserver = new MutationObserver(function(mutations) {
+	// do nothing if addon disabled or site whitelisted
+	if (!gSettings.addonEnabled || gSettings.whitelisted) {
+		return;
+	}
+	titleOriginal = document.title;
+	// disconnect title observer before making OUR changes
+	titleObserver.disconnect();
+	// lookup and redact title
+	for (let nWord of NWORDS) {
+		redactTitle(nWord);
+	}
+	// continue observing title changes
+	titleObserver.observe(document.head.querySelector("title"), {childList: true, subtree: true});
+});
+
+// get settings from background script, then do initial redacting, then watch for changes
 let gettingStorage = webext.runtime.sendMessage({action: "get_settings"});
 gettingStorage
 	.then(startRedacting)
-	.then(() => { 
-		observer.observe(document.body, {childList: true, subtree: true});
+	.then(() => {
+		bodyObserver.observe(document.body, {childList: true, subtree: true});
+		titleObserver.observe(document.head.querySelector("title"), {childList: true, subtree: true});
 	});
 
 // wait for a message
