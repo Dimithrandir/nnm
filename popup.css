@@ -28,7 +28,7 @@ h3 {
 	margin: 8px 0 0;
 }
 
-.row-container {
+.row-container, .radio-label {
 	align-items: center;
 	display: flex;
 	flex-direction: row;
@@ -40,8 +40,6 @@ h3 {
 	font-weight: bold;
 }
 
-/* Switch buttons */
-
 .switch {
 	display: block;
 	height: 16px;
@@ -49,26 +47,45 @@ h3 {
 	width: 24px;
 }
 
-.switch input {
+.radio-label {
+	cursor: pointer;
+	justify-content: flex-start;
+}
+
+.switch input, .radio-label input {
 	height: 0;
+	margin: 0;
 	opacity: 0;
 	width: 0;
 }
 
-.slider {
+.radio-label input {
+	margin-right: 8px;
+	width: 16px;
+}
+
+.slider, .checkmark {
 	background-color: #ccc;
 	border-radius: 16px;
-	bottom: 0;
 	cursor: pointer;
-	left: 0;
 	position: absolute;
-	right: 0;
-	top: 0;
 	-webkit-transition: .1s;
 	transition: .1s;
 }
 
-.slider:before {
+.slider {
+	bottom: 0;
+	left: 0;
+	right: 0;
+	top: 0;
+}
+
+.checkmark {
+	height: 16px;
+	width: 16px;
+}
+
+.slider:before, .checkmark:before {
 	background-color: #fff;
 	border-radius: 50%;
 	bottom: 4px;
@@ -81,11 +98,11 @@ h3 {
 	width: 8px;
 }
 
-input:checked + .slider {
+input:checked + .slider, input:checked + .checkmark {
 	background-color: #0060df;
 }
 
-input:focus + .slider {
+input:focus + .slider, input:focus + .checkmark {
 	box-shadow: 0 0 1px #0060df;
 }
 
@@ -93,11 +110,6 @@ input:checked + .slider:before {
 	-webkit-transform: translateX(8px);
 	-ms-transform: translateX(8px);
 	transform: translateX(8px);
-}
-
-.radio-label {
-	cursor: pointer;	
-	display: block;
 }
 
 #txt_refresh {
