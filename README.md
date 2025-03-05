@@ -29,4 +29,4 @@ This extension does **not** track nor does it store your activity, browsing hist
 
 ## Screenshots
 
-![screen2-chrome-1](https://github.com/Dimithrandir/nnm/assets/24793925/3a032ea6-6771-4925-baea-2f5d1c9ec809) ![screen3-1](https://github.com/Dimithrandir/nnm/assets/24793925/b2b07c8d-abb2-4974-ae08-da7b78145ac1)
+![screen2-chrome-1](https://github.com/Dimithrandir/nnm/assets/24793925/3a032ea6-6771-4925-baea-2f5d1c9ec809) ![screen3-2](https://github.com/user-attachments/assets/55571fbd-63cc-40ce-998a-276eb38afc94)
