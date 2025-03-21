@@ -1,42 +1,22 @@
 // make API browser agnostic
 const webext = ( typeof browser === "object" ) ? browser : chrome;
 
-// each object contains the word or phase to find in the document, and the part of it to be redacted
+// expressions to search for in the document, the first capturing group is the part to be redacted
 const NWORDS = [
-	{
-		query: "north macedonia",
-		redactedWord: "north"
-	},
-	{
-		query: "северна македонија",
-		redactedWord: "северна"
-	},
-	{
-		query: "северна македония",
-		redactedWord: "северна"
-	},
-	{
-		query: "severna makedonija",
-		redactedWord: "severna"
-	},
-	{
-		query: "sjeverna makedonija",
-		redactedWord: "sjeverna"
-	},
-	{
-		query: "nordmazedoni",
-		redactedWord: "nord"
-	},
-	{
-		query: "kuzey makedonya",
-		redactedWord: "kuzey"
-	}
-	/*
-	{
-		query: "maqedonisë së veriut",
-		redactedWord: "së veriut"
-	}
-	*/
+	// en, de, sv, da, nl, no, af
+	"(noo?r(th|d)[ \-]?)ma[cksz]edon",
+	// mk, bg, ru, sh
+	"(сј?еверн?[аеоу][јмяйю]?[ \-]?)македон",
+	// mk (latin), sh (latin), sl, cs
+	"(sj?evern?[aeiouí][jm]?[ \-]?)makedon",
+	// fr es it ro ast gl ca oc
+	"mac[eé]d[oóôò]i?ni?[ae] (d[eou]l? n[oò]r[dt]e?)",
+	// uk, be
+	"(п(ів|аў)н[іо]чн[аоуі][яїйю]?[ \-]?)македон",
+	// sq
+	"maqedoni[aeëns]{0,2} (s?[eë] veriut)",
+	// tr
+	"(kuzeyd?[ie]?n?[ \-]?)makedon"
 ];
 
 let gSettings = {};
@@ -60,129 +40,84 @@ function getNodes(root) {
 }
 
 /*
-Tries to imitate Mozilla's browser extension "find" API. Looks up a given string in an array of text nodes. Matches are stored with the indices of the nodes the lookup word begins and ends in, and the position within those text nodes.
-For each text node, searches the given text within it at first. Then searches subtracting substrings of it at the end of the node. If a match if found, it might span over multiple text nodes, so a helper function is utilized.
+Tries to imitate Mozilla's browser extension "find" API. Searches for all the regular expressions in a given array of text nodes. Matches are stored with the indices of the nodes the match begins and ends in, and its position within those text nodes.
+Searches are performed on the concatenated text content of all the nodes. By keeping each node's text content index in the concatenated text, it's possible to find the starting index of the node each match is in (using binary search for better performance). The other properties are then calculated based on the captured group length and used to define an object literal (similar to "find" API's rangeData).
+Returns an array of these objects.
 */
-function findMatches(nodes, lookupWord) {
-	// keep matches in an array
-	let matches = [];
-	// iterate through the text nodes
+function findMatches(nodes) {
+	// array of all matches
+	let result = [];
+	// whole page text
+	let fullText = "";
+	// each node's text content starting index in fullText
+	let nodesArray = [];
+
+	// length of text content so far
+	let length = 0;
+	// build full text and get nodes starting indices
 	for (let i = 0; i < nodes.length; i++) {
-		
-		let nodeText = nodes[i].textContent;
-		
-		let startTextNodePos = i;
-		let endTextNodePos = i;
-		let startOffset = 0;
-		let endOffset = 0;
-		// the lookup text will be modified, store it separately
-		let lookupText = lookupWord;
-		// search for current lookup text in current text node
-		let regEx = new RegExp(lookupText, "gi");
-		let lookups = nodeText.matchAll(regEx);
+		fullText += nodes[i].textContent;
+		nodesArray.push(length);
+		length += nodes[i].length;
+	}
+
+	for (const nWord of NWORDS) {
+		let regEx = new RegExp(nWord, "gi");
+		let matches = fullText.matchAll(regEx);
 		// possible multiple occurrences
-		for (const match of lookups) {
-			// add it as a match
-			matches.push({
-				startTextNodePos: startTextNodePos,
-				endTextNodePos: endTextNodePos,
-				startOffset: match.index,
-				endOffset: match.index + lookupText.length,
-				text: lookupWord});
-		}
-		// cut off part of the initial lookup string
-		let lookupTextRest = "";
-		// cut off letters of the lookup string and search for it at the end of the current text node.
-		do {
-			// slice the stings
-			lookupTextRest = lookupText.slice(-1).concat(lookupTextRest);
-			lookupText = lookupText.slice(0, lookupText.length-1);
-			// search for the text
-			regEx = new RegExp(lookupText, "gi");
-			let lookupPos = nodeText.search(regEx);
-			// if there's a match and it's at the text node end
-			if (lookupPos > -1 && lookupPos == nodeText.length - lookupText.length) {
-				// see if it continues through next nodes
-				let ends = findRestOfMatch(nodes.slice(i+1), lookupTextRest);
-				// if it does
-				if (ends[1] != -1) {
-					// add another match
-					matches.push({
-						startTextNodePos: startTextNodePos,
-						endTextNodePos: i + ends[0],
-						startOffset: lookupPos,
-						endOffset: ends[1],
-						text: lookupWord});
+		for (const match of matches) {
+			// starting and ending indices of the redaction group in the full text
+			let startRedact = match.index + match[0].search(match[1].trim());
+			let endRedact = startRedact + match[1].trim().length;
+
+			// ordinal position of first and last node the redaction group spans through
+			let startTextNodePos = 0;
+			let endTextNodePos = 0;
+
+			// binary search the starting node index
+			let l = 0;
+			let r = nodesArray.length - 1;
+			let m = 0;
+			while (l <= r) {
+				m = Math.floor((l + r) / 2);
+				if (nodesArray[m] + nodes[m].textContent.length <= startRedact) {
+					l = m + 1;
 				}
-				// jump the amount of nodes that have been checked
-				i += ends[0];
-				break;
+				else if (nodesArray[m] > startRedact) {
+					r = m - 1;
+				}
+				else {
+					startTextNodePos = m;
+					break;
+				}
 			}
-		} while (lookupText);
 
-	}
+			// find ending node
+			endTextNodePos = startTextNodePos;
+			while (endRedact > nodesArray[endTextNodePos] + nodes[endTextNodePos].textContent.length) {
+				endTextNodePos++;
+			}
 
-	return matches;
-}
+			// find the offsets
+			startOffset = startRedact - nodesArray[startTextNodePos];
+			endOffset = endRedact - nodesArray[endTextNodePos];
 
-/*
-Search for a single instance of a string. Used to check if a match spans through several nodes. Returns a two element array with the first element showing the number of nodes the match spans over and the second - the ordinal position of the end of the match within the last text node. If no match is found, the second elements is set to -1.
-*/
-function findRestOfMatch(nodes, lookupText) {
-	// number of nodes the match spans through and its end in the last one
-	let endNode = 0;
-	let endOffset = -1;
-	// for each node
-	for (let i = 0; i < nodes.length; i++) {
-		let nodeText = nodes[i].textContent;
-		// check if lookupText is in the textNode or it's vice-versa
-		let regEx1 = new RegExp(lookupText, "gi");
-		// escape special characters if any in text node
-		let regEx2 = new RegExp(nodeText.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"), "gi");
-		let lookupPos1 = -1;
-		let lookupPos2 = -1;
-		try {
-			lookupPos1 = nodeText.search(regEx1);
-			lookupPos2 = lookupText.search(regEx2);
-		}
-		catch (error) {
-			continue;
-		}
-		// lookup text ends in current node
-		if (lookupPos1 == 0) {
-			endNode = i + 1;
-			endOffset = lookupText.length;
-			break;
-		} // text node fits in lookup word, meaning it continues further
-		else if (lookupPos2 == 0) {
-			// slice it and loop to the next node
-			lookupText = lookupText.slice(nodeText.length, lookupText.length);	
-		}
-		else { // no match found, end here
-			// -1 offset means false alert
-			return [i++, -1];
+			// insertion sort the matches
+			for (let i = 0; i <= result.length; i++) {
+				if (!result.length || i == result.length || startTextNodePos < result[i].startTextNodePos || startTextNodePos == result[i].startTextNodePos && startOffset <= result[i].startOffset) {
+					result.splice(i, 0, {
+						startTextNodePos: startTextNodePos,
+						endTextNodePos: endTextNodePos,
+						startOffset: startOffset,
+						endOffset: endOffset,
+						text: match[1].trim()});
+					break;
+				}
+			}
 		}
 	}
 
-	return [endNode, endOffset];
-}
-
-/*
-Insert a node after a referenceNode
-*/
-function insertAfter(newNode, referenceNode) {
-	referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibiling);
-}
-
-/*
-Create a <span> element with given text content.
-*/
-function createSpan(innerText) {
-	let textNode = document.createTextNode(innerText);
-	let spanNode = document.createElement("span");
-	spanNode.classList.add(gSettings.redactClassName);
-	spanNode.appendChild(textNode);
-	return spanNode;
+	return result;
 }
 
 /*
@@ -193,6 +128,11 @@ function splitNode(node, startOffset, endOffset) {
 	// no need of splitting for element nodes, just insert custom style and return
 	if (node.nodeType == Node.ELEMENT_NODE) {
 		node.classList.add(gSettings.redactClassName);
+		return;
+	}
+
+	// don't do anything if the offset values turn out to be wrong
+	if (startOffset < 0 || endOffset > node.textContent.length) {
 		return;
 	}
 
@@ -217,58 +157,32 @@ function splitNode(node, startOffset, endOffset) {
 /*
 For each of found matches, apply custom style to the redacted word in the matching text node of the given array of nodes. If the matching node is just a text node, splits out the matching text in a <span> element. Goes through multiple nodes if the match spans through them.
 */
-function redactContent(nodes, ranges, redactedWord) {
+function redactContent(nodes, ranges) {
 
-	// calculate the redaction offset - length of the redacted text
-	let redactionOffset = redactedWord.length;
-
-	// iterate backwards through the matches (iterating backwards makes it easier to reference nodes with multiple matches. Plus, it's faster ;)
+	// iterate backwards through the matches (makes it easier to reference nodes with multiple matches)
 	for (let i = ranges.length-1; i >= 0; i--) {
-
 		// current match
 		let range = ranges[i];
-		// length of the query text (same for every range item)
-		let textLength = range.text.length;
 
 		// match is completely in one node
 		if (range.startTextNodePos == range.endTextNodePos) {
 			// simply get the node
 			let node = nodes[range.startTextNodePos];
 			// and split it at the redaction offset
-			splitNode(node, range.startOffset, range.startOffset + redactionOffset);
+			splitNode(node, range.startOffset, range.startOffset + range.text.length);
 		}
 		// match spans over multiple nodes
 		else {
 			// last node
 			let lastNode = nodes[range.endTextNodePos];
-			// does the redaction end in the last (or a previous) node?
-			let lastNodeEnding = false;
-			// the not redacted part of the matching text so far
-			let notRedactedSoFar = 0;
-			// if the redaction ends in last node, split it and toggle the flag
-			if (lastNode.endOffset > textLength - redactionOffset) {
-				splitNode(lastNode, 0, textLength - redactionOffset);
-				lastNodeEnding = true;
-			}
-			else // count the matched text we just passed
-				notRedactedSoFar += lastNode.endOffset;
+			splitNode(lastNode, 0, range.endOffset);
 
 			// iterate through all the middle nodes a match spans through. Do it backwards to keep consistency.
 			for (let j = range.endTextNodePos-1; j > range.startTextNodePos; j--) {
 				// current node
 				let middleNode = nodes[j];
-				// the whole node is redacted
-				if (lastNodeEnding)
-					splitNode(middleNode, 0, middleNode.textContent.length);	
-				// check if the redaction ends in this node, split it and mark the flag
-				else if (textLength - notRedactedSoFar - middleNode.textContent.length < redactionOffset) {
-					splitNode(lastNode, 0, middleNode.textContent.length - (textLength - redactionOffset - underactedSoFar));
-					lastNodeEnding = true;
-				}
-				else // we'll get them next node
-					notRedactedSoFar += middleNode.textContent.length;
+				splitNode(middleNode, 0, middleNode.textContent.length);
 			}
-
 			// first node
 			let firstNode = nodes[range.startTextNodePos];
 			splitNode(firstNode, range.startOffset, firstNode.textContent.length);
@@ -277,40 +191,40 @@ function redactContent(nodes, ranges, redactedWord) {
 }
 
 /*
-Removes all occurances of given phrase in the page title.
+Removes all matches of the regular expressions from the page title.
 */
-function redactTitle(nWord) {
+function redactTitle() {
 
-	let counter = 0;
-	let regEx = new RegExp(nWord.query, "gi");
+	let count = 0;
 
-	document.title = document.title.replaceAll(regEx, (match) => {
-		// slice the match instead of using nWord.redactedWord to preserve the letter case (for border & strike)
-		let section1 = match.slice(0, nWord.redactedWord.length);
-		let section2 = match.slice(nWord.redactedWord.length);
-		let redactedSection = "";
-		switch(gSettings.redactClassName) {
-			case "redacted-word-border":
-				redactedSection = "[[" + section1 + "]]";
-				break;
-			case "redacted-word-strike":
-				redactedSection = [...section1].join("\̵");
-				break;
-			case "redacted-word-black":
-				redactedSection = Array(nWord.redactedWord.length).fill("█").join("");
-				break;
-			case "redacted-word-white":
-				redactedSection = Array(nWord.redactedWord.length).fill("_").join("");
-				break;
-			default:
-				// redacted-word-hidden - redactedSection remains empty
-				break;
-		}
-		counter += 1;
-		return redactedSection + section2;
-	});
+	for (const nWord of NWORDS) {
+		let regEx = new RegExp(nWord, "gi");
 
-	return counter;
+		document.title = document.title.replaceAll(regEx, (match, p1) => {
+			let redactedSection = "";
+			switch(gSettings.redactClassName) {
+				case "redacted-word-border":
+					redactedSection = "[[" + p1.trim() + "]]";
+					break;
+				case "redacted-word-strike":
+					redactedSection = [...p1.trim()].join("\̵");
+					break;
+				case "redacted-word-black":
+					redactedSection = Array(p1.trim().length).fill("█").join("");
+					break;
+				case "redacted-word-white":
+					redactedSection = Array(p1.trim().length).fill("_").join("");
+					break;
+				default:
+					// redacted-word-hidden - redactedSection remains empty
+					break;
+			}
+			count += 1;
+			return match.replace(p1.trim(), redactedSection);
+		});
+	}
+
+	return count;
 }
 
 /*
@@ -334,9 +248,7 @@ function changeStyle(oldStyle, newStyle) {
 		document.title = titleOriginal;
 		// disconnect title observer before making OUR changes
 		titleObserver.disconnect();
-		for (let nWord of NWORDS) {
-			redactTitle(nWord);
-		}
+		redactTitle();
 		// continue observing title changes
 		titleObserver.observe(document.head.querySelector("title"), {childList: true, subtree: true});
 	}
@@ -354,19 +266,18 @@ function startRedacting(settings) {
 		webext.runtime.sendMessage({action: "set_icon"});
 		return;
 	}
+	// all the text nodes in document
+	let nodes = getNodes(document.body);
 	// current site matches
 	let totalCount = 0;
-	// for each of the hard coded NWORDS
-	for (let nWord of NWORDS) {
-		// find and redact matches in page title
-		totalCount += redactTitle(nWord);
-		// find all the matches
-		let result = findMatches(getNodes(document.body), nWord.query);
-		// update total count
-		totalCount += result.length;
-		// redact all the matches
-		redactContent(getNodes(document.body), result, nWord.redactedWord);
-	}
+	// find and redact matches in page title
+	totalCount += redactTitle();
+	// find all the matches
+	let result = findMatches(nodes);
+	// update total count
+	totalCount += result.length;
+	// redact all the matches
+	redactContent(nodes, result);
 	// send new matches count to background script to be stored
 	webext.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: false}});
 
@@ -388,11 +299,9 @@ let bodyObserver = new MutationObserver(function(mutations) {
 	}
 	// search and redact them
 	let totalCount = 0;
-	for (let nWord of NWORDS) {
-		let result = findMatches(nodes, nWord.query);
-		totalCount += result.length;
-		redactContent(nodes, result, nWord.redactedWord);
-	}
+	let result = findMatches(nodes);
+	totalCount += result.length;
+	redactContent(nodes, result);
 	// send new matches count (if any) to background script to be stored
 	if (totalCount) {
 		webext.runtime.sendMessage({action: "set_count", data: {count: totalCount, mutation: true}});
@@ -409,9 +318,7 @@ let titleObserver = new MutationObserver(function(mutations) {
 	// disconnect title observer before making OUR changes
 	titleObserver.disconnect();
 	// lookup and redact title
-	for (let nWord of NWORDS) {
-		redactTitle(nWord);
-	}
+	redactTitle();
 	// continue observing title changes
 	titleObserver.observe(document.head.querySelector("title"), {childList: true, subtree: true});
 });
