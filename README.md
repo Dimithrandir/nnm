@@ -3,13 +3,9 @@
 
 NNM (No N-word Macedonia) is a web extension for Firefox and Chromium based browsers that searches for and redacts instances of the the n-word (and its translations in other languages) before the name Macedonia while browsing. It allows users to choose between several redaction styles, including the option for hiding, as well as adding exceptions for sites or disabling it completely. 
 
-Currently, it understands:
-* English
-* German
-* Macedonian
-* Bulgarian
-* Serbian
-* Croatian
+#### Supported languages:
+
+Afrikaans, Albanian, Asturian, Belarusian, Bosnian, Bulgarian, Catalan, Croatian, Czech, Danish, Dutch, English, Esperanto, French, Galician, German, Italian, Luxembourgish, Macedonian, Montenegrin, Norwegian, Occitan, Portuguese, Romanian, Russian, Serbian, Slovene, Spanish, Swedish, Turkish, Ukrainian
 
 ## Installation
 For Firefox, you can install it from the official Mozilla Add-on platform:
